@@ -60,6 +60,39 @@ def main(argv=None) -> int:
     m.add_argument("--limit", type=int, default=0, help="only the first N sessions")
     m.add_argument("--report", default=None)
 
+    r = sub.add_parser("restore", help="Sidon speech restoration (GPU)")
+    corpus_args(r)
+    r.add_argument("--shard", type=int, default=0)
+    r.add_argument("--n-shards", type=int, default=1)
+    r.add_argument("--limit", type=int, default=0, help="only the first N recordings")
+    r.add_argument("--device", default="cuda")
+    r.add_argument("--overwrite", action="store_true")
+    r.add_argument("--report", default=None)
+
+    d = sub.add_parser("dnsmos", help="DNSMOS P.835 per speaker channel")
+    corpus_args(d)
+    d.add_argument("--out", required=True, help="JSON results (resumable)")
+    d.add_argument("--shard", type=int, default=0)
+    d.add_argument("--n-shards", type=int, default=1)
+    d.add_argument("--limit", type=int, default=0, help="only the first N recordings")
+    d.add_argument("--audio", default=None,
+                   help="corpus-specific audio variant, e.g. openyap `raw`|`restored`")
+    d.add_argument("--device", default="cuda")
+    d.add_argument("--no-resume", action="store_true")
+
+    k = sub.add_parser("cuts", help="MFA supervisions -> FastMSS-ready CutSets (lhotse)")
+    corpus_args(k)
+    k.add_argument("--supervisions", nargs="+", required=True,
+                   help="collected MFA supervision manifest(s), e.g. one per shard")
+    k.add_argument("--recordings", required=True)
+    k.add_argument("--out-dir", required=True)
+    k.add_argument("--prefix", default=None, help="default: the corpus name")
+    k.add_argument("--resample", type=int, default=None,
+                   help="lazily resample recordings to this rate (e.g. 16000)")
+    k.add_argument("--blocklist", default=None,
+                   help="JSON list of channel file_ids to drop from the utterance cuts")
+    k.add_argument("--report", default=None)
+
     s = sub.add_parser("config", help="print the resolved config for a corpus")
     corpus_args(s)
 
@@ -88,6 +121,30 @@ def main(argv=None) -> int:
         from .corpora.candor.extract import extract
         stats = extract(source, shard=a.shard, n_shards=a.n_shards, jobs=a.jobs,
                         limit=a.limit, overwrite=a.overwrite, report=a.report)
+    elif a.stage == "restore":
+        from .core.restore import restore
+        try:
+            stats = restore(source, shard=a.shard, n_shards=a.n_shards, limit=a.limit,
+                            overwrite=a.overwrite, device=a.device, report=a.report)
+        except NotImplementedError as exc:
+            print(f"[msprep] {exc}", file=sys.stderr)
+            return 2
+        if stats["failures"]:
+            print(json.dumps(stats, indent=2), flush=True)
+            return 1
+    elif a.stage == "dnsmos":
+        from .core.dnsmos import score
+        stats = score(source, a.out, shard=a.shard, n_shards=a.n_shards, limit=a.limit,
+                      audio=a.audio, device=a.device, resume=not a.no_resume)
+    elif a.stage == "cuts":
+        from .core.cuts import build_cuts
+        blocked = set()
+        if a.blocklist:
+            with open(a.blocklist) as fh:
+                blocked = {source.stem_key(f) for f in json.load(fh)}
+        stats = build_cuts(a.recordings, a.supervisions, a.out_dir,
+                           a.prefix or a.corpus, resample=a.resample,
+                           blocked=blocked, report=a.report)
     else:
         stats = source.config
 

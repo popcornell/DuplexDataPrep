@@ -11,6 +11,6 @@ One directory per corpus:
 from __future__ import annotations
 
 from .base import Channel, ChannelSource, available, get_source, register  # noqa: F401
-from . import candor, fisher, notsofar  # noqa: F401,E402  (registers each corpus)
+from . import candor, fisher, notsofar, openyap  # noqa: F401,E402  (registers each corpus)
 
 __all__ = ["Channel", "ChannelSource", "available", "get_source", "register"]

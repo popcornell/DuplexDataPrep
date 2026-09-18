@@ -3,7 +3,11 @@
 Multi-speaker corpus preprocessing for forced alignment and FastMSS meeting
 simulation. Extracted from the MFA repo so the same pipeline can run over any
 corpus that can be expressed as *single-speaker channels* — Fisher, CANDOR,
-LibriSpeech, NOTSOFAR-1.
+LibriSpeech, NOTSOFAR-1, and duplex releases like OpenYAP-1K.
+
+For a duplex corpus the chain is: word times → utterances → **Sidon** restoration
+(→ 24 kHz) → **MFA** per speaker channel → **DNSMOS** per channel → Lhotse
+CutSets → FastMSS simulated meetings.
 
 FastMSS itself stays an unmodified external dependency. This package is the
 pre/post work around it.
@@ -15,6 +19,9 @@ msprep/
   core/                 corpus-agnostic stages
     manifests.py  segments.py  textgrid.py  sharding.py
     config.py     prep.py      collect.py
+    restore.py    Sidon speech restoration (GPU)
+    dnsmos.py     DNSMOS P.835 per speaker channel
+    cuts.py       MFA supervisions -> FastMSS-ready Lhotse CutSets
   corpora/              one directory per corpus
     base.py             Channel, ChannelSource, the registry
     fisher/
@@ -28,8 +35,14 @@ msprep/
       __init__.py       the adapter (close-talk track only)
       notsofar.yaml
       manifest.py       raw release tree -> Lhotse-style manifests
+    openyap/
+      __init__.py       the adapter (duplex: one 48 kHz FLAC per speaker)
+      openyap.yaml
+      manifest.py       ASR word times -> utterances + manifests
 tools/                  parity_prep.sh  parity_collect.sh
                         smoke_notsofar.sh  make_notsofar_fixture.py
+                        restore_dnsmos.sbatch   (GPU: restore, DNSMOS raw + restored)
+                        align_collect.sbatch    (CPU: mfa align, collect)
 ```
 
 Nothing in `core/` knows a corpus name. Everything a corpus does differently is
@@ -104,7 +117,25 @@ msprep collect fisher --aligned-dir out/fisher \
     --output out/manifests/fisher_supervisions_mfa.jsonl.gz --phones
 ```
 
+The duplex chain, end to end (OpenYAP-1K):
+
+```bash
+msprep manifest openyap                              # word times -> utterances
+sbatch --array=0-39 --export=ALL,CORPUS=openyap,N_SHARDS=40 tools/restore_dnsmos.sbatch
+msprep prep openyap --corpus-dir corpus/openyap
+sbatch --array=0-39 --export=ALL,CORPUS=openyap tools/align_collect.sbatch
+msprep cuts openyap --supervisions logs/openyap/supervisions_mfa_shard*.jsonl.gz \
+    --recordings out/manifests/openyap_recordings_sidon24k.jsonl.gz \
+    --resample 16000 --out-dir out/manifests [--blocklist bad_channels.json]
+# -> FastMSS: prep_meeting_source.py + recipes/sim.py on <prefix>_cuts_mfa_utt.jsonl.gz
+```
+
 Without an install, `PYTHONPATH=<this dir> python3 -m msprep ...` works the same.
+
+Each stage has its own dependencies, and on Delta they live in different envs, so
+nothing is installed together: `restore` needs torch/torchaudio (`sidon` env),
+`dnsmos` needs espnet's `DNSMOS_local` + onnxruntime (urgent_baselines env), `cuts`
+needs lhotse (`fastmss` env). All of them need PyYAML.
 
 `prep` and `extract` need only PyYAML; `collect` also needs `praatio`, imported
 lazily so corpus construction never pays for it. On Delta both are in the `mfa`
@@ -153,9 +184,13 @@ it replaces.
 | `corpora.fisher` | ported |
 | `corpora.candor` (+ `extract.py`) | ported |
 | `corpora.notsofar` (+ `manifest.py`) | ported, run on the real `dev_set` (36 sessions / 201 channels) |
+| `corpora.openyap` (+ `manifest.py`) | new; pilot run end to end (4 conversations → 10 FastMSS meetings) |
+| `core.restore` — Sidon | ported from the Fisher restorer, any input rate; pilot 84x RT on A100 |
+| `core.dnsmos` | ported from `dnsmos_sessions.py`; speech regions from each channel's own turns |
+| `core.cuts` — CutSets in FastMSS's convention | ported from `build_cutsets.py` |
 | `corpora.librispeech` | next |
-| `core.gating` — oracle-segmentation gate | not written; see below |
-| cut construction / filter policy / FastMSS staging | still in the MFA repo's `scripts/` |
+| `core.gating` | a post-restoration gate lives in `core.restore` (floor, not zero); see below |
+| filter policy / FastMSS source prep | still in the MFA repo's `scripts/` (`prep_meeting_source.py`) |
 
 The MFA repo's `scripts/` are still what the production pipeline runs; nothing
 was switched over.
@@ -257,6 +292,38 @@ They are *not* needed for resegmentation: NOTSOFAR turns are short (longest 8.0 
 in dev_set, 8.7 s in the train transcriptions, none over 20 s), so nothing is
 split. Turns longer than `warn_turn_over` are counted and reported
 (`turns_over_warn_length`) rather than silently handed to MFA.
+
+## OpenYAP-1K
+
+The Agentic Data Company duplex release: 865 complete conversations, 518 h,
+one mono 48 kHz FLAC per speaker on a shared timeline, 239 corpus-wide speaker
+ids (no scoping needed), per-word ASR times, and a DNSMOS series on the raw audio.
+
+**It ships no turn table**, so `msprep manifest openyap` builds utterances from
+the word times: a pause of ≥ 1.0 s ends one, anything over 20 s is cut at its
+widest pause, and each is padded — never past the midpoint to a neighbour. The
+supervision manifest *is* the segmentation: `collect` buckets MFA's words back
+into exactly these spans. The full release gives 349,071 utterances.
+
+**Pad is 0.3 s, measured.** Aligning the same pilot four ways (Sidon gated / Sidon
+ungated / raw 48 kHz, at 0.1 s and 0.3 s pad), a 0.1 s pad left MFA's first or
+last word pinned to the interval edge in 13–20% of utterances — the ASR's word
+times clip short backchannels, and MFA cannot place a word outside its interval.
+0.3 s brought that to 4–7%. The post-restoration gate made no difference to
+alignment, and Sidon vs raw audio moved word ends by ~10 ms median.
+
+Pilot, 4 conversations / 8 channels / 2.06 h:
+
+| stage | result |
+|---|---|
+| restore (Sidon, 48 → 24 kHz) | 8/8, sample-exact length; 84x RT, plus ~6.5 min model load from Lustre |
+| MFA + collect | 718/718 utterances with words, 0 OOV |
+| DNSMOS OVRL, raw → restored | +0.11 to +0.53; an already-clean channel −0.03 |
+| DNSMOS cost | 11 min on raw 48 kHz vs 2 min on the 24 kHz output |
+| cuts → FastMSS | 10 × 600 s clean meetings, 3–6 speakers |
+
+Raw-audio DNSMOS agrees with the release's own shipped medians to within ~0.2,
+so the protocol (12 × 10 s speech-dense windows) measures the same thing.
 
 ## Planned: `core.gating`
 

@@ -94,6 +94,14 @@ class ChannelSource(ABC):
             f"{self.name} already ships Lhotse manifests; `msprep manifest` is "
             "only for corpora whose release has none")
 
+    def restore_items(self, limit: int = 0):
+        """(Channel, source audio, restored destination) for `msprep restore`.
+
+        Only corpora whose pipeline restores audio implement it; the
+        Channel's `turns` are what the post-restoration gate keeps.
+        """
+        raise NotImplementedError(f"{self.name} has no restoration stage")
+
     # ---- used when folding alignments back (core.collect)
 
     @property

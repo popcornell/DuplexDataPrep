@@ -1,0 +1,76 @@
+# OpenYAP-1K (Agentic Data Company duplex release). Two-party conversations
+# recorded one mono 48 kHz FLAC per speaker on a shared timeline, with per-word
+# ASR times, per-speaker demographics and a pre-restoration DNSMOS series.
+#
+#   <root>/conv_<hex>/
+#     meta.json                       both speaker ids, duration_seconds, ...
+#     speaker_{a,b}.flac              1ch 48 kHz PCM_16, identical frame counts
+#     speaker_{a,b}_transcript.json   {"text", "words": [{word,start,end,type}]}
+#     speaker_{a,b}_meta.json         demographics, device, audio_metrics
+#     speaker_{a,b}_dnsmos.json       DNSMOS P.835 series on the raw audio
+name: openyap
+
+root: /work/hdd/bbjs/shared/corpora/OpenYAP-1K/conversations
+
+# Optional: restrict `msprep manifest` to these conversation ids (a pilot
+# subset) instead of scanning the whole release.
+# conversations: [conv_07d77c3a5868, conv_22f6ad936da4]
+
+manifests:
+  # Written by `msprep manifest openyap`, then read by restore/prep/collect.
+  dir: /scratch/bbjs/cornell2/MFA/out/manifests
+  recordings: openyap_recordings.jsonl.gz
+  recordings_restored: openyap_recordings_sidon24k.jsonl.gz
+  supervisions: openyap_supervisions.jsonl.gz
+
+# The release ships no turn table, only word times, so utterances are built
+# from them: a pause of at least `pause_split` ends an utterance, and anything
+# still longer than `max_dur` is cut at its widest remaining pause (>=
+# `min_gap`) by the same routine CANDOR uses. Edges are padded by `pad` so MFA
+# sees onsets/offsets the ASR clipped, never past the midpoint to a neighbour.
+#
+# pad 0.3, not 0.1: on the 4-conversation pilot (2026-09-18) a 0.1 s pad left
+# MFA's first/last word pinned to the interval edge in 13-20% of utterances --
+# boxed in by the ASR's clipped word times, worst on short backchannels. 0.3 s
+# brought that to 4-7%. The post-Sidon gate made no difference either way.
+segment:
+  pause_split: 1.0
+  max_dur: 20.0
+  min_gap: 0.30
+  pad: 0.30
+
+audio:
+  # `restored` aligns and scores the Sidon output of `msprep restore`;
+  # `raw` points prep straight at the 48 kHz release.
+  use: restored
+  restored_dir: /scratch/bbjs/cornell2/MFA/audio/openyap_sidon24k
+  ext: .flac
+
+prep:
+  n_shards: 40
+
+# Sidon speech restoration (`msprep restore openyap`, GPU, `sidon` env).
+restore:
+  feature_extractor: /scratch/bbjs/cornell2/fisher/sidon_ckpt/feature_extractor_cuda.pt
+  decoder: /scratch/bbjs/cornell2/fisher/sidon_ckpt/decoder_cuda.pt
+  out_sr: 24000
+  chunk_seconds: 20.0
+  overlap_seconds: 2.0
+  batch_size: 8
+  dtype: fp32
+  # Sidon invents content in near-silence, and a headset still carries the
+  # partner between turns. Gate to the speaker's own word times after
+  # restoration (restore first: the restorer fed digital silence hallucinates
+  # in it). Taper to a floor, not to zero, so MFA's log-energy features never
+  # see exact silence and the edges are not clicks.
+  gate: true
+  gate_pad: 0.10
+  gate_fade_ms: 20.0
+  gate_floor_db: -60.0
+
+# DNSMOS P.835 over speech-dense windows (`msprep dnsmos openyap`, urgent env).
+# 12 x 10 s is the Fisher protocol; keep one protocol per corpus.
+dnsmos:
+  model_dir: /scratch/bbjs/cornell2/temp_dahee_eval/urgent_baselines/track1/eval/DNSMOS
+  windows: 12
+  win_sec: 10.0

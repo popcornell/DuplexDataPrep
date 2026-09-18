@@ -12,6 +12,10 @@ dependencies = ["pyyaml>=5.4"]
 [project.optional-dependencies]
 # Only `collect` needs praatio; `prep` writes TextGrids itself.
 collect = ["praatio>=6.0"]
+# `restore` (Sidon) and `dnsmos`; on Delta these run in the `sidon` and
+# urgent_baselines envs respectively rather than being installed together.
+restore = ["torch", "torchaudio", "soundfile"]
+dnsmos = ["espnet", "onnxruntime", "soundfile"]
 # Cut construction / FastMSS staging (not yet ported).
 sim = ["lhotse>=1.33"]
 
@@ -25,3 +29,4 @@ include = ["msprep*"]
 "msprep.corpora.fisher" = ["*.yaml"]
 "msprep.corpora.candor" = ["*.yaml"]
 "msprep.corpora.notsofar" = ["*.yaml"]
+"msprep.corpora.openyap" = ["*.yaml"]
