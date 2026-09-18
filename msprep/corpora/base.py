@@ -87,9 +87,8 @@ class ChannelSource(ABC):
     def build_manifests(self, **kwargs) -> dict:
         """Raw release tree -> Lhotse-style manifests.
 
-        Only for corpora whose release ships none (NOTSOFAR-1) or whose
-        manifests have to be assembled from more than one source (nsf_chorus).
-        Fisher and CANDOR already have theirs, so the default refuses.
+        Only for corpora whose release ships none, like NOTSOFAR-1. Fisher
+        and CANDOR already have theirs, so the default refuses.
         """
         raise NotImplementedError(
             f"{self.name} already ships Lhotse manifests; `msprep manifest` is "
