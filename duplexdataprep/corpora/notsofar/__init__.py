@@ -3,8 +3,8 @@
 Unlike Fisher and CANDOR, NOTSOFAR ships no Lhotse manifests, so there is an
 extra stage first:
 
-    msprep manifest notsofar --split train_set    # raw tree -> JSONL manifests
-    msprep prep     notsofar --corpus-dir corpus/notsofar
+    duplexdataprep manifest notsofar --split train_set    # raw tree -> JSONL manifests
+    duplexdataprep prep     notsofar --corpus-dir corpus/notsofar
 
 One close-talk wav is one speaker channel, so the corpus fits the same shape as
 the others once the manifests exist:
@@ -97,12 +97,12 @@ class Notsofar(ChannelSource):
     def iter_channels(self, limit: int = 0):
         if self.mic != "near":
             raise ValueError(
-                "msprep only prepares the NOTSOFAR close-talk track (`mic: near`). "
+                "duplexdataprep only prepares the NOTSOFAR close-talk track (`mic: near`). "
                 "Far-field channels are mixtures and cannot be force aligned.")
         if not self.recordings_path.exists():
             raise FileNotFoundError(
                 f"{self.recordings_path} not found -- run "
-                f"`msprep manifest notsofar --split {self.split}` first")
+                f"`duplexdataprep manifest notsofar --split {self.split}` first")
 
         recs = {}
         for i, r in enumerate(load_jsonl(self.recordings_path)):

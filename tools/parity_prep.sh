@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test: `msprep prep <corpus>` must reproduce the legacy scripts/prep_<corpus>.py
+# Smoke test: `duplexdataprep prep <corpus>` must reproduce the legacy scripts/prep_<corpus>.py
 # byte-for-byte on the same subset.
 #
 #   tools/parity_prep.sh <fisher|candor> [N_RECORDINGS] [N_SHARDS] [WORKDIR]
@@ -10,7 +10,7 @@ set -euo pipefail
 CORPUS=${1:?usage: parity_prep.sh <fisher|candor> [N] [SHARDS] [WORKDIR]}
 N=${2:-20}
 SHARDS=${3:-4}
-WORK=${4:-/tmp/msprep-parity-$CORPUS}
+WORK=${4:-/tmp/duplexdataprep-parity-$CORPUS}
 MFA_ROOT=${MFA_ROOT:-/scratch/bbjs/cornell2/MFA}
 PKG_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -33,8 +33,8 @@ python3 "$MFA_ROOT/scripts/prep_$CORPUS.py" \
     --report "$WORK/old.json" "${extra[@]}" >"$WORK/old.stdout"
 tail -2 "$WORK/old.stdout"
 
-echo "== package: msprep prep $CORPUS"
-PYTHONPATH="$PKG_ROOT" python3 -m msprep prep "$CORPUS" \
+echo "== package: duplexdataprep prep $CORPUS"
+PYTHONPATH="$PKG_ROOT" python3 -m duplexdataprep prep "$CORPUS" \
     --corpus-dir "$NEW" --n-shards "$SHARDS" --limit "$N" \
     --report "$WORK/new.json" >"$WORK/new.stdout"
 grep -E '^\[' "$WORK/new.stdout" | tail -2

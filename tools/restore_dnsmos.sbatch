@@ -5,10 +5,10 @@
 #
 #   sbatch --array=0-39 --export=ALL,CORPUS=openyap,N_SHARDS=40 tools/restore_dnsmos.sbatch
 #
-# Pilot / alternate paths: export MSPREP_OPENYAP_CONFIG=<yaml> (see README).
+# Pilot / alternate paths: export DUPLEXDATAPREP_OPENYAP_CONFIG=<yaml> (see README).
 # Idempotent: restore skips channels already written, DNSMOS resumes from its
 # JSON, so a requeued or resubmitted task only does the missing work.
-#SBATCH --job-name=msprep_gpu
+#SBATCH --job-name=duplexdataprep_gpu
 #SBATCH --account=bbjs-delta-gpu
 #SBATCH --partition=gpuA100x4
 #SBATCH --nodes=1
@@ -23,7 +23,7 @@
 
 set -uo pipefail
 
-MSPREP=/scratch/bbjs/cornell2/MFA/msprep
+DDP_ROOT=/scratch/bbjs/cornell2/MFA/DuplexDataPrep
 SIDON_PY=/scratch/bbjs/cornell2/miniconda3/envs/sidon/bin/python
 DNSMOS_PY=/scratch/bbjs/cornell2/temp_dahee_eval/urgent_baselines/env/bin/python
 
@@ -34,7 +34,7 @@ OUT_DIR="${OUT_DIR:-/scratch/bbjs/cornell2/MFA/logs/${CORPUS}}"
 TAG=$(printf "shard%03d" "$SHARD")
 mkdir -p "$OUT_DIR"
 
-export PYTHONPATH="$MSPREP"
+export PYTHONPATH="$DDP_ROOT"
 export PYTHONNOUSERSITE=1
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}"
 
@@ -42,7 +42,7 @@ echo "host=$(hostname) corpus=$CORPUS shard=$SHARD/$N_SHARDS start=$(date -Is)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 
 t0=$(date +%s)
-"$SIDON_PY" -u -m msprep restore "$CORPUS" --shard "$SHARD" --n-shards "$N_SHARDS" \
+"$SIDON_PY" -u -m duplexdataprep restore "$CORPUS" --shard "$SHARD" --n-shards "$N_SHARDS" \
     --report "$OUT_DIR/restore_${TAG}.json"
 RC=$?
 echo "restore rc=$RC wall=$(( $(date +%s) - t0 ))s"
@@ -53,7 +53,7 @@ export HF_HOME=/scratch/bbjs/cornell2/temp_dahee_eval/urgent_baselines/urgent_me
 export HF_HUB_OFFLINE=1
 for AUDIO in raw restored; do
   t0=$(date +%s)
-  "$DNSMOS_PY" -u -m msprep dnsmos "$CORPUS" --audio "$AUDIO" \
+  "$DNSMOS_PY" -u -m duplexdataprep dnsmos "$CORPUS" --audio "$AUDIO" \
       --shard "$SHARD" --n-shards "$N_SHARDS" \
       --out "$OUT_DIR/dnsmos_${AUDIO}_${TAG}.json"
   RC=$?

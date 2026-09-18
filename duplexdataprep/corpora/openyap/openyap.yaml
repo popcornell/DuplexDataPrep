@@ -12,12 +12,12 @@ name: openyap
 
 root: /work/hdd/bbjs/shared/corpora/OpenYAP-1K/conversations
 
-# Optional: restrict `msprep manifest` to these conversation ids (a pilot
+# Optional: restrict `duplexdataprep manifest` to these conversation ids (a pilot
 # subset) instead of scanning the whole release.
 # conversations: [conv_07d77c3a5868, conv_22f6ad936da4]
 
 manifests:
-  # Written by `msprep manifest openyap`, then read by restore/prep/collect.
+  # Written by `duplexdataprep manifest openyap`, then read by restore/prep/collect.
   dir: /scratch/bbjs/cornell2/MFA/out/manifests
   recordings: openyap_recordings.jsonl.gz
   recordings_restored: openyap_recordings_sidon24k.jsonl.gz
@@ -40,7 +40,7 @@ segment:
   pad: 0.30
 
 audio:
-  # `restored` aligns and scores the Sidon output of `msprep restore`;
+  # `restored` aligns and scores the Sidon output of `duplexdataprep restore`;
   # `raw` points prep straight at the 48 kHz release.
   use: restored
   restored_dir: /scratch/bbjs/cornell2/MFA/audio/openyap_sidon24k
@@ -49,7 +49,7 @@ audio:
 prep:
   n_shards: 40
 
-# Sidon speech restoration (`msprep restore openyap`, GPU, `sidon` env).
+# Sidon speech restoration (`duplexdataprep restore openyap`, GPU, `sidon` env).
 restore:
   feature_extractor: /scratch/bbjs/cornell2/fisher/sidon_ckpt/feature_extractor_cuda.pt
   decoder: /scratch/bbjs/cornell2/fisher/sidon_ckpt/decoder_cuda.pt
@@ -68,7 +68,7 @@ restore:
   gate_fade_ms: 20.0
   gate_floor_db: -60.0
 
-# DNSMOS P.835 over speech-dense windows (`msprep dnsmos openyap`, urgent env).
+# DNSMOS P.835 over speech-dense windows (`duplexdataprep dnsmos openyap`, urgent env).
 # 12 x 10 s is the Fisher protocol; keep one protocol per corpus.
 dnsmos:
   model_dir: /scratch/bbjs/cornell2/temp_dahee_eval/urgent_baselines/track1/eval/DNSMOS

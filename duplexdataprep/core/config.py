@@ -1,15 +1,15 @@
 """Corpus configuration: paths and parameters live in YAML, not in code.
 
-Each corpus ships `msprep/corpora/<name>/<name>.yaml` with its manifest paths
+Each corpus ships `duplexdataprep/corpora/<name>/<name>.yaml` with its manifest paths
 and its knobs. Resolution order, first hit wins:
 
     1. an explicit path (CLI `--config`)
-    2. $MSPREP_<CORPUS>_CONFIG            e.g. MSPREP_CANDOR_CONFIG
-    3. $MSPREP_CONFIG_DIR/<corpus>.yaml   a whole directory of overrides
+    2. $DUPLEXDATAPREP_<CORPUS>_CONFIG            e.g. DUPLEXDATAPREP_CANDOR_CONFIG
+    3. $DUPLEXDATAPREP_CONFIG_DIR/<corpus>.yaml   a whole directory of overrides
     4. the packaged default
 
 String values are passed through `expandvars`/`expanduser`, so a config can be
-written against `$MSPREP_DATA_ROOT` and moved between machines without edits.
+written against `$DUPLEXDATAPREP_DATA_ROOT` and moved between machines without edits.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def _load_yaml(path: Path) -> dict:
         import yaml
     except ImportError as exc:  # pragma: no cover - environment problem
         raise ImportError(
-            "msprep reads corpus configs from YAML and needs PyYAML. "
+            "duplexdataprep reads corpus configs from YAML and needs PyYAML. "
             "On Delta: `conda activate mfa`, or `pip install pyyaml`."
         ) from exc
     with open(path, "rt", encoding="utf-8") as fh:
@@ -55,10 +55,10 @@ def deep_update(base: dict, other: dict) -> dict:
 def config_path(corpus: str, package_dir: Path, explicit=None) -> Path:
     if explicit:
         return Path(explicit)
-    env = os.environ.get(f"MSPREP_{corpus.upper()}_CONFIG")
+    env = os.environ.get(f"DUPLEXDATAPREP_{corpus.upper()}_CONFIG")
     if env:
         return Path(env)
-    config_dir = os.environ.get("MSPREP_CONFIG_DIR")
+    config_dir = os.environ.get("DUPLEXDATAPREP_CONFIG_DIR")
     if config_dir and (Path(config_dir) / f"{corpus}.yaml").exists():
         return Path(config_dir) / f"{corpus}.yaml"
     return Path(package_dir) / f"{corpus}.yaml"

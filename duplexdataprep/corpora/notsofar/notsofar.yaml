@@ -20,7 +20,7 @@ version: auto             # `auto` picks the single version dir under the split
 mic: near                 # near == close_talk. `far` is refused, not supported.
 
 manifests:
-  # Written by `msprep manifest notsofar`, then read by prep/collect.
+  # Written by `duplexdataprep manifest notsofar`, then read by prep/collect.
   dir: /scratch/bbjs/cornell2/MFA/out/manifests
   recordings: "notsofar_recordings_{split}.jsonl.gz"
   supervisions: "notsofar_supervisions_{split}.jsonl.gz"

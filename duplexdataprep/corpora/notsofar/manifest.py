@@ -14,7 +14,7 @@ carries every speaker at once, so it cannot be force aligned without separation
 first -- it is an evaluation target, not a source. `mic: far` is refused rather
 than silently producing one "speaker channel" per array microphone.
 
-    msprep manifest notsofar --split train_set
+    duplexdataprep manifest notsofar --split train_set
 
 Durations are read from the wav headers with the stdlib `wave` module, so this
 stage needs no audio library.
@@ -119,7 +119,7 @@ def build_manifests(source, split=None, out_dir=None, limit=0, report=None,
     cfg = source.config
     if cfg.get("mic", "near") != "near":
         raise ValueError(
-            "msprep only prepares the NOTSOFAR close-talk track (`mic: near`). "
+            "duplexdataprep only prepares the NOTSOFAR close-talk track (`mic: near`). "
             "Far-field channels are mixtures and cannot be force aligned.")
 
     root = Path(cfg["root"])

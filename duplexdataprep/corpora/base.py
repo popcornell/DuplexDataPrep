@@ -57,7 +57,7 @@ class ChannelSource(ABC):
     """Adapter protocol: turn a corpus into a stream of speaker channels.
 
     Paths and parameters come from the corpus's YAML config (see
-    `msprep.core.config`); only behaviour lives in the subclass.
+    `duplexdataprep.core.config`); only behaviour lives in the subclass.
     """
 
     name: str
@@ -91,11 +91,11 @@ class ChannelSource(ABC):
         and CANDOR already have theirs, so the default refuses.
         """
         raise NotImplementedError(
-            f"{self.name} already ships Lhotse manifests; `msprep manifest` is "
+            f"{self.name} already ships Lhotse manifests; `duplexdataprep manifest` is "
             "only for corpora whose release has none")
 
     def restore_items(self, limit: int = 0):
-        """(Channel, source audio, restored destination) for `msprep restore`.
+        """(Channel, source audio, restored destination) for `duplexdataprep restore`.
 
         Only corpora whose pipeline restores audio implement it; the
         Channel's `turns` are what the post-restoration gate keeps.

@@ -1,4 +1,4 @@
-"""Command line: `python -m msprep <stage> <corpus> ...`.
+"""Command line: `python -m duplexdataprep <stage> <corpus> ...`.
 
 Every stage takes a corpus name; paths and defaults come from that corpus's
 YAML config, which `--config` can point elsewhere.
@@ -16,7 +16,7 @@ from .corpora import available, get_source
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="msprep")
+    ap = argparse.ArgumentParser(prog="duplexdataprep")
     sub = ap.add_subparsers(dest="stage", required=True)
 
     def corpus_args(p):
@@ -111,11 +111,11 @@ def main(argv=None) -> int:
             stats = source.build_manifests(split=a.split, out_dir=a.out_dir,
                                            limit=a.limit, report=a.report)
         except NotImplementedError as exc:
-            print(f"[msprep] {exc}", file=sys.stderr)
+            print(f"[duplexdataprep] {exc}", file=sys.stderr)
             return 2
     elif a.stage == "extract":
         if a.corpus != "candor":
-            print(f"[msprep] {a.corpus} audio needs no extraction step",
+            print(f"[duplexdataprep] {a.corpus} audio needs no extraction step",
                   file=sys.stderr)
             return 2
         from .corpora.candor.extract import extract
@@ -127,7 +127,7 @@ def main(argv=None) -> int:
             stats = restore(source, shard=a.shard, n_shards=a.n_shards, limit=a.limit,
                             overwrite=a.overwrite, device=a.device, report=a.report)
         except NotImplementedError as exc:
-            print(f"[msprep] {exc}", file=sys.stderr)
+            print(f"[duplexdataprep] {exc}", file=sys.stderr)
             return 2
         if stats["failures"]:
             print(json.dumps(stats, indent=2), flush=True)

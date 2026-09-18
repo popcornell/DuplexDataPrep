@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test: `msprep collect <corpus>` must reproduce scripts/collect_alignments.py.
+# Smoke test: `duplexdataprep collect <corpus>` must reproduce scripts/collect_alignments.py.
 #
 #   tools/parity_collect.sh <fisher|candor> [ALIGNED_DIR] [WORKDIR]
 #
@@ -9,7 +9,7 @@ set -euo pipefail
 CORPUS=${1:?usage: parity_collect.sh <fisher|candor> [ALIGNED_DIR] [WORKDIR]}
 MFA_ROOT=${MFA_ROOT:-/scratch/bbjs/cornell2/MFA}
 ALIGNED=${2:-$MFA_ROOT/out/$CORPUS/shard000}
-WORK=${3:-/tmp/msprep-collect-parity-$CORPUS}
+WORK=${3:-/tmp/duplexdataprep-collect-parity-$CORPUS}
 PKG_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mkdir -p "$WORK"
 
@@ -18,8 +18,8 @@ python3 "$MFA_ROOT/scripts/collect_alignments.py" "$CORPUS" \
     --aligned-dir "$ALIGNED" --output "$WORK/old.jsonl.gz" \
     --phones --report "$WORK/old.json" >/dev/null
 
-echo "== package: msprep collect $CORPUS"
-PYTHONPATH="$PKG_ROOT" python3 -m msprep collect "$CORPUS" \
+echo "== package: duplexdataprep collect $CORPUS"
+PYTHONPATH="$PKG_ROOT" python3 -m duplexdataprep collect "$CORPUS" \
     --aligned-dir "$ALIGNED" --output "$WORK/new.jsonl.gz" \
     --phones --report "$WORK/new.json" >/dev/null
 

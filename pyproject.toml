@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "msprep"
+name = "duplexdataprep"
 version = "0.3.0"
 description = "Multi-speaker corpus preprocessing for forced alignment and FastMSS simulation"
 requires-python = ">=3.10"
@@ -20,13 +20,13 @@ dnsmos = ["espnet", "onnxruntime", "soundfile"]
 sim = ["lhotse>=1.33"]
 
 [project.scripts]
-msprep = "msprep.cli:main"
+duplexdataprep = "duplexdataprep.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["msprep*"]
+include = ["duplexdataprep*"]
 
 [tool.setuptools.package-data]
-"msprep.corpora.fisher" = ["*.yaml"]
-"msprep.corpora.candor" = ["*.yaml"]
-"msprep.corpora.notsofar" = ["*.yaml"]
-"msprep.corpora.openyap" = ["*.yaml"]
+"duplexdataprep.corpora.fisher" = ["*.yaml"]
+"duplexdataprep.corpora.candor" = ["*.yaml"]
+"duplexdataprep.corpora.notsofar" = ["*.yaml"]
+"duplexdataprep.corpora.openyap" = ["*.yaml"]

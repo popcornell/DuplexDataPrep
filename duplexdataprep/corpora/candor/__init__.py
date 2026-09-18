@@ -1,7 +1,7 @@
 """CANDOR -> speaker channels.
 
 CANDOR ships one 48 kHz *stereo* mp3 per conversation, channel 0 / channel 1
-carrying one speaker each. `msprep extract candor` splits it into two 16 kHz
+carrying one speaker each. `duplexdataprep extract candor` splits it into two 16 kHz
 mono FLACs up front so MFA gets exact seeks and no crosstalk; this adapter then
 writes a single-tier TextGrid per side.
 

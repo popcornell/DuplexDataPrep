@@ -12,7 +12,7 @@
 # dropped, over-long turns are counted, and far-field devices are ignored.
 set -euo pipefail
 
-WORK=${1:-/tmp/msprep-notsofar-smoke}
+WORK=${1:-/tmp/duplexdataprep-notsofar-smoke}
 PKG_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 rm -rf "$WORK"; mkdir -p "$WORK"
 
@@ -44,15 +44,15 @@ text:
 warn_turn_over: 20.0
 YAML
 
-export MSPREP_NOTSOFAR_CONFIG="$WORK/notsofar.yaml"
+export DUPLEXDATAPREP_NOTSOFAR_CONFIG="$WORK/notsofar.yaml"
 export PYTHONPATH="$PKG_ROOT"
 
 echo "== manifest"
-python3 -m msprep manifest notsofar --report "$WORK/manifest.json" >"$WORK/manifest.stdout"
+python3 -m duplexdataprep manifest notsofar --report "$WORK/manifest.json" >"$WORK/manifest.stdout"
 tail -1 "$WORK/manifest.stdout" >/dev/null; grep -E '^\[' "$WORK/manifest.stdout"
 
 echo "== prep"
-python3 -m msprep prep notsofar --corpus-dir "$WORK/corpus" \
+python3 -m duplexdataprep prep notsofar --corpus-dir "$WORK/corpus" \
     --report "$WORK/prep.json" >"$WORK/prep.stdout"
 grep -E '^\[' "$WORK/prep.stdout"
 

@@ -1,13 +1,13 @@
 #!/bin/bash
 # CPU half: MFA over one prepared shard, then fold the TextGrids back into
-# supervisions. Run after `msprep prep` (seconds, login node is fine) and after
+# supervisions. Run after `duplexdataprep prep` (seconds, login node is fine) and after
 # the restore shard the corpus points at has finished.
 #
 #   sbatch --array=0-39 --export=ALL,CORPUS=openyap tools/align_collect.sbatch
 #
 # 8 cores / 15 GB: MFA's wall clock is flat from 4 to 16 cores on this data and
 # peak RSS was 6.4 GB at nj=16 (see MFA/scripts/align_array.sbatch).
-#SBATCH --job-name=msprep_align
+#SBATCH --job-name=duplexdataprep_align
 #SBATCH --account=bbjs-delta-cpu
 #SBATCH --partition=cpu
 #SBATCH --nodes=1
@@ -32,7 +32,7 @@ DICT=$ROOT/models/pretrained_models/dictionary/english_us_arpa.dict
 
 source /scratch/bbjs/cornell2/miniconda3/etc/profile.d/conda.sh
 conda activate mfa
-export PYTHONPATH=$ROOT/msprep
+export PYTHONPATH=$ROOT/DuplexDataPrep
 
 TMP_BASE="${SLURM_TMPDIR:-/tmp}/mfa_${SLURM_JOB_ID:-$$}_${SLURM_ARRAY_TASK_ID:-0}"
 mkdir -p "$TMP_BASE" "$ALIGN_DIR" "$OUT_DIR"
@@ -50,7 +50,7 @@ RC=$?
 echo "mfa rc=$RC wall=$(( $(date +%s) - t0 ))s aligned=$(ls "$ALIGN_DIR"/*.TextGrid 2>/dev/null | wc -l)"
 [ "$RC" -ne 0 ] && exit $RC
 
-python -u -m msprep collect "$CORPUS" --aligned-dir "$ALIGN_DIR" --phones \
+python -u -m duplexdataprep collect "$CORPUS" --aligned-dir "$ALIGN_DIR" --phones \
   --output "$OUT_DIR/supervisions_mfa_${TAG}.jsonl.gz" \
   --report "$OUT_DIR/collect_${TAG}.json"
 RC=$?

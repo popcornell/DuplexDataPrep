@@ -16,7 +16,7 @@ prep:
   n_shards: 40
 
 audio:
-  mode: extracted            # produced by `msprep extract candor`
+  mode: extracted            # produced by `duplexdataprep extract candor`
   dir: /scratch/bbjs/cornell2/MFA/audio/candor
   ext: .flac
   sample_rate: 16000

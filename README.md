@@ -1,4 +1,4 @@
-# msprep
+# DuplexDataPrep
 
 Multi-speaker corpus preprocessing for forced alignment and FastMSS meeting
 simulation. Extracted from the MFA repo so the same pipeline can run over any
@@ -15,7 +15,7 @@ pre/post work around it.
 ## Layout
 
 ```
-msprep/
+duplexdataprep/
   core/                 corpus-agnostic stages
     manifests.py  segments.py  textgrid.py  sharding.py
     config.py     prep.py      collect.py
@@ -79,8 +79,8 @@ Paths and parameters live in `corpora/<name>/<name>.yaml`, never in code.
 Resolution order, first hit wins:
 
 1. `--config /path/to.yaml`
-2. `$MSPREP_<CORPUS>_CONFIG` — e.g. `MSPREP_CANDOR_CONFIG`
-3. `$MSPREP_CONFIG_DIR/<corpus>.yaml` — a whole directory of overrides
+2. `$DUPLEXDATAPREP_<CORPUS>_CONFIG` — e.g. `DUPLEXDATAPREP_CANDOR_CONFIG`
+3. `$DUPLEXDATAPREP_CONFIG_DIR/<corpus>.yaml` — a whole directory of overrides
 4. the packaged default
 
 Every string is passed through `expandvars`/`expanduser`, so a config can be
@@ -89,8 +89,8 @@ config omits fall back to the adapter's defaults, so an override file only needs
 the lines it changes.
 
 ```bash
-msprep config candor                       # print the resolved config
-msprep config candor --config mine.yaml
+duplexdataprep config candor                       # print the resolved config
+duplexdataprep config candor --config mine.yaml
 ```
 
 CANDOR's `variant` (`audiophile` | `cliffhanger` | `backbiter`) is substituted
@@ -100,37 +100,37 @@ into the supervisions filename, so switching turn tables is a one-line edit.
 
 ```bash
 # CANDOR only: split stereo mp3 -> per-speaker 16 kHz FLAC (SLURM array friendly)
-msprep extract candor --shard 0 --n-shards 8 --jobs 8
+duplexdataprep extract candor --shard 0 --n-shards 8 --jobs 8
 
 # NOTSOFAR only: raw release tree -> manifests (it ships none)
-msprep manifest notsofar --split dev_set
+duplexdataprep manifest notsofar --split dev_set
 
 # build a sharded MFA corpus (audio symlinked, one TextGrid per speaker channel)
-msprep prep fisher   --corpus-dir corpus/fisher    # n_shards from the config
-msprep prep candor   --corpus-dir corpus/candor
-msprep prep notsofar --corpus-dir corpus/notsofar
+duplexdataprep prep fisher   --corpus-dir corpus/fisher    # n_shards from the config
+duplexdataprep prep candor   --corpus-dir corpus/candor
+duplexdataprep prep notsofar --corpus-dir corpus/notsofar
 
 # ... run MFA over corpus/<ds>/shardNNN ...
 
 # fold the aligned TextGrids back into supervisions
-msprep collect fisher --aligned-dir out/fisher \
+duplexdataprep collect fisher --aligned-dir out/fisher \
     --output out/manifests/fisher_supervisions_mfa.jsonl.gz --phones
 ```
 
 The duplex chain, end to end (OpenYAP-1K):
 
 ```bash
-msprep manifest openyap                              # word times -> utterances
+duplexdataprep manifest openyap                              # word times -> utterances
 sbatch --array=0-39 --export=ALL,CORPUS=openyap,N_SHARDS=40 tools/restore_dnsmos.sbatch
-msprep prep openyap --corpus-dir corpus/openyap
+duplexdataprep prep openyap --corpus-dir corpus/openyap
 sbatch --array=0-39 --export=ALL,CORPUS=openyap tools/align_collect.sbatch
-msprep cuts openyap --supervisions logs/openyap/supervisions_mfa_shard*.jsonl.gz \
+duplexdataprep cuts openyap --supervisions logs/openyap/supervisions_mfa_shard*.jsonl.gz \
     --recordings out/manifests/openyap_recordings_sidon24k.jsonl.gz \
     --resample 16000 --out-dir out/manifests [--blocklist bad_channels.json]
 # -> FastMSS: prep_meeting_source.py + recipes/sim.py on <prefix>_cuts_mfa_utt.jsonl.gz
 ```
 
-Without an install, `PYTHONPATH=<this dir> python3 -m msprep ...` works the same.
+Without an install, `PYTHONPATH=<this dir> python3 -m duplexdataprep ...` works the same.
 
 Each stage has its own dependencies, and on Delta they live in different envs, so
 nothing is installed together: `restore` needs torch/torchaudio (`sidon` env),
@@ -154,7 +154,7 @@ tools/smoke_notsofar.sh                 # fixture-based; no legacy script exists
 ```
 
 `parity_prep.sh` builds the same subset with `scripts/prep_<corpus>.py` and with
-`msprep`, then diffs the corpus trees with `--no-dereference` (so symlink
+`duplexdataprep`, then diffs the corpus trees with `--no-dereference` (so symlink
 targets count, not just their presence) and compares the JSON reports key by
 key. `parity_collect.sh` runs both collectors over an already-aligned shard and
 compares uncompressed manifest bytes plus every report key except `output`.
@@ -228,7 +228,7 @@ also the only split here with audio: the chime-utils reformat under
 `new_notsofar_train/` carries the train transcriptions (390 sessions, 103,505
 segments) but its `audio/train` is empty.
 
-Measured on the real `dev_set` (`msprep manifest` then `msprep prep`):
+Measured on the real `dev_set` (`duplexdataprep manifest` then `duplexdataprep prep`):
 
 | | |
 |---|---|
@@ -299,7 +299,7 @@ The Agentic Data Company duplex release: 865 complete conversations, 518 h,
 one mono 48 kHz FLAC per speaker on a shared timeline, 239 corpus-wide speaker
 ids (no scoping needed), per-word ASR times, and a DNSMOS series on the raw audio.
 
-**It ships no turn table**, so `msprep manifest openyap` builds utterances from
+**It ships no turn table**, so `duplexdataprep manifest openyap` builds utterances from
 the word times: a pause of ≥ 1.0 s ends one, anything over 20 s is cut at its
 widest pause, and each is padded — never past the midpoint to a neighbour. The
 supervision manifest *is* the segmentation: `collect` buckets MFA's words back

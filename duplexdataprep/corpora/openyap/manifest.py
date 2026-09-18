@@ -5,14 +5,14 @@ word times. Utterances are built here, once, because `collect` later buckets
 MFA's words back into exactly these spans -- the supervision manifest *is* the
 segmentation, and prep must not re-derive it.
 
-    msprep manifest openyap                 # every complete conversation
-    msprep manifest openyap --limit 5       # pilot
+    duplexdataprep manifest openyap                 # every complete conversation
+    duplexdataprep manifest openyap --limit 5       # pilot
 
 Writes three files under `manifests.dir`:
 
     recordings            one recording per conversation, channel 0 = speaker_a
                           and channel 1 = speaker_b, pointing at the raw 48 kHz
-    recordings_restored   the same, pointing at `msprep restore` output. Sidon
+    recordings_restored   the same, pointing at `duplexdataprep restore` output. Sidon
                           output is length-matched, so supervisions are shared
     supervisions          one per utterance, with the ASR word times attached as
                           `alignment.word` ([symbol, start, duration, 1.0])

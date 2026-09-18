@@ -5,7 +5,7 @@ One ffmpeg decode per conversation produces both sides. Output goes to
 the recordings manifest (channel 0 == channel_map.json "L"). Decoding is
 sample-exact against the manifest durations (verified: 0.000 s drift).
 
-    msprep extract candor --shard 0 --n-shards 8 --jobs 8
+    duplexdataprep extract candor --shard 0 --n-shards 8 --jobs 8
 """
 
 from __future__ import annotations

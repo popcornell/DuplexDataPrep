@@ -2,15 +2,15 @@
 
 A duplex release: every conversation is two mono 48 kHz FLACs on one timeline,
 one per speaker, so each side is already a speaker channel -- no extraction, no
-separation. What it lacks is a turn table; `msprep manifest openyap` builds
+separation. What it lacks is a turn table; `duplexdataprep manifest openyap` builds
 utterances from the ASR word times first. The full chain:
 
-    msprep manifest openyap                       # word times -> manifests
-    msprep restore  openyap --shard i --n-shards N   # Sidon, 48 kHz -> 24 kHz (GPU)
-    msprep prep     openyap --corpus-dir corpus/openyap
+    duplexdataprep manifest openyap                       # word times -> manifests
+    duplexdataprep restore  openyap --shard i --n-shards N   # Sidon, 48 kHz -> 24 kHz (GPU)
+    duplexdataprep prep     openyap --corpus-dir corpus/openyap
     # ... mfa align corpus/openyap/shardNNN ...
-    msprep collect  openyap --aligned-dir out/openyap --output ...
-    msprep dnsmos   openyap --shard i --n-shards N   # restored-audio quality
+    duplexdataprep collect  openyap --aligned-dir out/openyap --output ...
+    duplexdataprep dnsmos   openyap --shard i --n-shards N   # restored-audio quality
 
     audio/openyap_sidon24k/<cid>-a.flac
     corpus/openyap/shardNNN/<cid>-a.flac       -> ../../../audio/openyap_sidon24k/...
@@ -97,7 +97,7 @@ class OpenYap(ChannelSource):
         use = audio or self.audio_use
         if not self.recordings_path.exists():
             raise FileNotFoundError(
-                f"{self.recordings_path} not found -- run `msprep manifest openyap` first")
+                f"{self.recordings_path} not found -- run `duplexdataprep manifest openyap` first")
 
         recs = {}
         for i, r in enumerate(load_jsonl(self.recordings_path)):
@@ -149,7 +149,7 @@ class OpenYap(ChannelSource):
     # -------------------------------------------------------------- restore
 
     def restore_items(self, limit: int = 0):
-        """(channel, src_path, dst_path) for `msprep restore`."""
+        """(channel, src_path, dst_path) for `duplexdataprep restore`."""
         for ch in self.iter_channels(limit=limit, audio="raw"):
             cid, side = ch.file_id.rsplit("-", 1)
             yield ch, ch.audio_path, self.restored_path(cid, side)
