@@ -28,7 +28,11 @@ msprep/
       __init__.py       the adapter (close-talk track only)
       notsofar.yaml
       manifest.py       raw release tree -> Lhotse-style manifests
-tools/                  parity_prep.sh  parity_collect.sh
+    nsf_chorus/
+      __init__.py       the adapter (Sidon-restored close-talk, 24 kHz)
+      nsf_chorus.yaml
+      manifest.py       restored audio + two annotation copies -> manifests
+tools/                  parity_prep.sh  parity_collect.sh  parity_nsf_chorus.sh
                         smoke_notsofar.sh  make_notsofar_fixture.py
 ```
 
@@ -90,7 +94,10 @@ into the supervisions filename, so switching turn tables is a one-line edit.
 msprep extract candor --shard 0 --n-shards 8 --jobs 8
 
 # NOTSOFAR only: raw release tree -> manifests (it ships none)
-msprep manifest notsofar --split train_set
+msprep manifest notsofar --split dev_set
+
+# nsf_chorus only: restored audio + word times -> manifests (needs no aligner)
+msprep manifest nsf_chorus                  # all splits + the dev+train merge
 
 # build a sharded MFA corpus (audio symlinked, one TextGrid per speaker channel)
 msprep prep fisher   --corpus-dir corpus/fisher    # n_shards from the config
@@ -120,6 +127,7 @@ tools/parity_prep.sh    candor 20 4
 tools/parity_collect.sh fisher          # one aligned shard
 tools/parity_collect.sh candor
 tools/smoke_notsofar.sh                 # fixture-based; no legacy script exists
+tools/parity_nsf_chorus.sh              # vs the manifests HEAT-TTS built
 ```
 
 `parity_prep.sh` builds the same subset with `scripts/prep_<corpus>.py` and with
@@ -139,6 +147,7 @@ Measured on this tree:
 | collect candor, `out/candor/shard000` (84 grids) | 35,017 supervisions, md5 `745f0d24…`, 99.5 % word coverage |
 | smoke notsofar, 2 sessions × 3 speakers (fixture) | 22 contract assertions, all pass |
 | notsofar `dev_set`, real data | 201 TextGrids, 9,674 utterances, 0 markers surviving, 201 distinct tiers |
+| nsf_chorus manifests, all 182 meetings | all 6 artifacts byte-identical to the originals |
 
 Any corpus added later should land with the same kind of check against whatever
 it replaces.
@@ -153,6 +162,7 @@ it replaces.
 | `corpora.fisher` | ported |
 | `corpora.candor` (+ `extract.py`) | ported |
 | `corpora.notsofar` (+ `manifest.py`) | ported, run on the real `dev_set` (36 sessions / 201 channels) |
+| `corpora.nsf_chorus` (+ `manifest.py`) | absorbed from HEAT-TTS, parity-checked byte for byte |
 | `corpora.librispeech` | next |
 | `core.gating` — oracle-segmentation gate | not written; see below |
 | cut construction / filter policy / FastMSS staging | still in the MFA repo's `scripts/` |
@@ -257,6 +267,42 @@ They are *not* needed for resegmentation: NOTSOFAR turns are short (longest 8.0 
 in dev_set, 8.7 s in the train transcriptions, none over 20 s), so nothing is
 split. Turns longer than `warn_turn_over` are counted and reported
 (`turns_over_warn_length`) rather than silently handed to MFA.
+
+## Two NOTSOFAR corpora, on purpose
+
+`notsofar` and `nsf_chorus` are the same meetings and different artifacts. They
+are kept separate because they answer different questions:
+
+| | `notsofar` | `nsf_chorus` |
+|---|---|---|
+| audio | raw close-talk, 16 kHz | Sidon-restored, 24 kHz |
+| splits with audio here | dev only (20.93 h) | train + dev + eval (18.83 h, 182 meetings) |
+| shape | one wav per speaker channel | one recording per meeting, one channel per speaker |
+| word times | from the release | release (dev) + CHiME-8 DASR (train/eval) |
+| needs MFA | yes — that is what `prep` builds | no, the manifests ship aligned |
+| speaker ids | `<session>__<alias>` | raw alias (dev) / `P###` (train, eval) |
+
+`nsf_chorus` is the restored counterpart of the Sidon-restored Fisher the
+simulated corpora are built from, so it is the one to reach for when the corpus
+is a FastMSS *source*. `notsofar` keeps the unrestored close-talk and the
+forced-alignment path, which is what you want when the question is about the
+aligner or about raw-recording quality.
+
+The `nsf_chorus` stage was absorbed from
+`HEAT-TTS/scripts/build_notsofar_manifests.py`, which is left in place. The port
+drops lhotse — it built `RecordingSet` / `SupervisionSegment` objects, this
+writes the same JSON directly — because lhotse is not installed in the `mfa`
+env, and every other `msprep` manifest stage needs nothing beyond the standard
+library plus PyYAML. `AlignmentItem.end`'s `round(..., 8)` is reproduced
+deliberately; without it the float text drifts. `tools/parity_nsf_chorus.sh`
+proves the two agree: all 182 recordings, dev 9,314 / train 16,360 / eval 17,308
+supervisions and the 25,674-row dev+train merge come out byte-identical.
+
+**Both carry the same alias caveat, differently.** `notsofar` scopes aliases to
+their session; `nsf_chorus` keeps the ids its annotation sources give, which
+means its *dev* supervisions still use bare aliases ("Bert") while train and
+eval use CHiME-8's corrected `P###` ids. Anything that samples distinct speakers
+across nsf_chorus dev meetings needs the same scoping applied.
 
 ## Planned: `core.gating`
 

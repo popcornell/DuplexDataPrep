@@ -51,9 +51,11 @@ def main(argv=None) -> int:
 
     m = sub.add_parser("manifest",
                        help="build Lhotse-style manifests from a raw release "
-                            "(corpus-specific; NOTSOFAR ships no manifests)")
+                            "(only for corpora that ship none)")
     corpus_args(m)
-    m.add_argument("--split", default=None, help="default: split from the config")
+    m.add_argument("--split", default=None,
+                   help="default: split from the config; `all` where a corpus "
+                        "builds every split at once")
     m.add_argument("--out-dir", default=None)
     m.add_argument("--limit", type=int, default=0, help="only the first N sessions")
     m.add_argument("--report", default=None)
@@ -72,13 +74,12 @@ def main(argv=None) -> int:
         stats = collect(source, a.aligned_dir, a.output,
                         phones=a.phones, report=a.report)
     elif a.stage == "manifest":
-        if a.corpus != "notsofar":
-            print(f"[msprep] {a.corpus} already ships Lhotse manifests",
-                  file=sys.stderr)
+        try:
+            stats = source.build_manifests(split=a.split, out_dir=a.out_dir,
+                                           limit=a.limit, report=a.report)
+        except NotImplementedError as exc:
+            print(f"[msprep] {exc}", file=sys.stderr)
             return 2
-        from .corpora.notsofar.manifest import build_manifests
-        stats = build_manifests(source, split=a.split, out_dir=a.out_dir,
-                                limit=a.limit, report=a.report)
     elif a.stage == "extract":
         if a.corpus != "candor":
             print(f"[msprep] {a.corpus} audio needs no extraction step",

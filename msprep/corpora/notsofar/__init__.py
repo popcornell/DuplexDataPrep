@@ -86,6 +86,12 @@ class Notsofar(ChannelSource):
             text = text.replace(marker, " ")
         return " ".join(text.split())
 
+    # ------------------------------------------------------- manifest stage
+
+    def build_manifests(self, **kwargs) -> dict:
+        from .manifest import build_manifests
+        return build_manifests(self, **kwargs)
+
     # ------------------------------------------------------------ channels
 
     def iter_channels(self, limit: int = 0):
