@@ -1,0 +1,20 @@
+# Fisher, sidon-restored. One mono FLAC per conversation side already exists,
+# so audio is symlinked in place and MFA resamples 24 kHz -> 16 kHz itself.
+name: fisher
+
+manifests:
+  recordings: /scratch/bbjs/cornell2/fisher/lhotse_manifests/fixed/recordings_notfixed_sidon.jsonl.gz
+  supervisions: /scratch/bbjs/cornell2/fisher/lhotse_manifests/fixed/supervisions_notfixed_sidon.jsonl.gz
+
+prep:
+  n_shards: 60
+
+audio:
+  mode: in_place          # symlink the source file; nothing is decoded
+
+# Normalisation is deliberately thin: MFA already lowercases, strips punctuation
+# and routes bracketed / out-of-vocabulary tokens to `spn`.
+text:
+  strip_uncertainty: true   # "(( maybe this ))" -> keep the words, drop the marks
+  expand_acronyms: true     # "u._s." -> "u s" (each letter is in english_us_arpa)
+  keep_events: true         # [laughter] [lipsmack] ... left alone -> aligned as spn

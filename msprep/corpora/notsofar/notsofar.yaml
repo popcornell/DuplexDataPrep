@@ -1,0 +1,59 @@
+# NOTSOFAR-1. Real 4-8 person meetings; the close-talk (headset) track is the
+# only one that can be force aligned -- far-field array channels are mixtures.
+#
+# Download (see the challenge repo's README / utils/azure_storage.py):
+#   azcopy copy https://notsofarsa.blob.core.windows.net/benchmark-datasets/\
+#     <subset>/<version>/MTG <root>/<subset> --recursive
+name: notsofar
+
+# <root>/<split>/<version>/MTG/<session>/{close_talk,mc*,sc*,gt_*.json}
+#
+# This points at the only raw release tree on this cluster, a staging copy made
+# for chime-utils. Its name says `_old` / `_delme`, so it is not a durable home:
+# re-download to a permanent root (see the azcopy line above) and repoint this
+# before anything depends on it long term. `dev_set` is the only split here with
+# audio -- the chime-utils reformat under `new_notsofar_train/` has the train
+# transcriptions but an empty `audio/train`.
+root: /scratch/bbjs/cornell2/CHiME6/tmp_chimeutils/notsofar1_gt_dev_old
+split: dev_set            # train_set | dev_set | eval_set
+version: auto             # `auto` picks the single version dir under the split
+mic: near                 # near == close_talk. `far` is refused, not supported.
+
+manifests:
+  # Written by `msprep manifest notsofar`, then read by prep/collect.
+  dir: /scratch/bbjs/cornell2/MFA/out/manifests
+  recordings: "notsofar_recordings_{split}.jsonl.gz"
+  supervisions: "notsofar_supervisions_{split}.jsonl.gz"
+
+prep:
+  n_shards: 8
+
+audio:
+  mode: in_place          # close-talk wavs are already one mono file per speaker
+
+# Participant aliases ("Bert", "Ernie") are per-meeting cast names reused by
+# different people across sessions -- dev_set has 201 close-talk channels but
+# only 12 alias strings. `session` scopes them to `<session>__<alias>`, which is
+# the real speaker identity; `global` trusts the raw alias.
+speaker_scope: session
+
+# The release ships per-word times. They are not used for alignment (MFA
+# produces its own) but are carried into the supervisions, where cut
+# construction and FastMSS's pause splitting can use them.
+keep_word_timing: true
+
+text:
+  # Every angle-bracket tag is annotation, not a word: standalone markers
+  # (<ST/> <FILL/> <FILLlaugh/> <UNKNOWN/> <BA/> <ISSUE/> <SN/> <PAUSE/>) and
+  # the paired <PName>Bert</PName>, which wraps a real spoken name. Stripping
+  # the tags and keeping what is between them handles both shapes.
+  strip_all_markers: true
+  # Applied after the tag strip, for anything literal a release adds that is
+  # not tag-shaped. The tag rule above already covers every marker seen so far.
+  strip_markers: []
+
+# Forced alignment cannot handle multi-minute turns. NOTSOFAR turns are short --
+# the longest in dev_set is 8.0 s and in the train transcriptions 8.7 s, with
+# none over 20 s -- so nothing is resegmented; turns over this length are
+# counted and reported rather than silently going to MFA.
+warn_turn_over: 20.0

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msprep"
+version = "0.3.0"
+description = "Multi-speaker corpus preprocessing for forced alignment and FastMSS simulation"
+requires-python = ">=3.10"
+dependencies = ["pyyaml>=5.4"]
+
+[project.optional-dependencies]
+# Only `collect` needs praatio; `prep` writes TextGrids itself.
+collect = ["praatio>=6.0"]
+# Cut construction / FastMSS staging (not yet ported).
+sim = ["lhotse>=1.33"]
+
+[project.scripts]
+msprep = "msprep.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["msprep*"]
+
+[tool.setuptools.package-data]
+"msprep.corpora.fisher" = ["*.yaml"]
+"msprep.corpora.candor" = ["*.yaml"]
+"msprep.corpora.notsofar" = ["*.yaml"]

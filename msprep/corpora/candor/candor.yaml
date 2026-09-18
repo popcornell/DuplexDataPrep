@@ -1,0 +1,37 @@
+# CANDOR. One 48 kHz stereo mp3 per conversation, channel 0 / 1 carrying one
+# speaker each; split once into per-speaker 16 kHz mono FLAC (see extract.py)
+# so MFA gets exact seeks and no crosstalk.
+name: candor
+
+# Turn table to align against. `audiophile` aggregates long backchannel runs
+# into single turns (the longest is 3,131 s), which is why resegment exists.
+variant: audiophile          # audiophile | cliffhanger | backbiter
+
+manifests:
+  root: /scratch/bbjs/shared/Candor/Candor_lhotse/manifests
+  recordings: candor_recordings.jsonl.gz
+  supervisions: "candor_supervisions_{variant}.jsonl.gz"
+
+prep:
+  n_shards: 40
+
+audio:
+  mode: extracted            # produced by `msprep extract candor`
+  dir: /scratch/bbjs/cornell2/MFA/audio/candor
+  ext: .flac
+  sample_rate: 16000
+  compression_level: 5
+  sample_fmt: s16
+
+# Forced alignment cannot handle multi-minute turns. Over-long supervisions are
+# cut at their widest inter-word pauses using the AWS Transcribe word times
+# already in the manifests -- those times pick cut points only; every alignment
+# in the output is MFA's own.
+resegment:
+  max_dur: 20.0
+  min_gap: 0.30
+
+text:
+  # CANDOR is cased, punctuated ASR output with no event annotation; MFA's own
+  # cleanup handles both, so normalisation only guards against empty turns.
+  collapse_whitespace: true
