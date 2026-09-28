@@ -114,13 +114,13 @@ def main(argv=None) -> int:
             print(f"[duplexdataprep] {exc}", file=sys.stderr)
             return 2
     elif a.stage == "extract":
-        if a.corpus != "candor":
-            print(f"[duplexdataprep] {a.corpus} audio needs no extraction step",
-                  file=sys.stderr)
+        try:
+            stats = source.extract(shard=a.shard, n_shards=a.n_shards, jobs=a.jobs,
+                                   limit=a.limit, overwrite=a.overwrite,
+                                   report=a.report)
+        except NotImplementedError as exc:
+            print(f"[duplexdataprep] {exc}", file=sys.stderr)
             return 2
-        from .corpora.candor.extract import extract
-        stats = extract(source, shard=a.shard, n_shards=a.n_shards, jobs=a.jobs,
-                        limit=a.limit, overwrite=a.overwrite, report=a.report)
     elif a.stage == "restore":
         from .core.restore import restore
         try:

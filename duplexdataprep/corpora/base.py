@@ -94,6 +94,14 @@ class ChannelSource(ABC):
             f"{self.name} already ships Lhotse manifests; `duplexdataprep manifest` is "
             "only for corpora whose release has none")
 
+    def extract(self, **kwargs) -> dict:
+        """Materialise per-speaker mono audio from the release (`duplexdataprep extract`).
+
+        Only for corpora whose release is not already one file per speaker,
+        like CANDOR's stereo mp3s or otoSpeech's WebDataset tars.
+        """
+        raise NotImplementedError(f"{self.name} audio needs no extraction step")
+
     def restore_items(self, limit: int = 0):
         """(Channel, source audio, restored destination) for `duplexdataprep restore`.
 

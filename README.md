@@ -3,7 +3,8 @@
 Multi-speaker corpus preprocessing for forced alignment and FastMSS meeting
 simulation. Extracted from the MFA repo so the same pipeline can run over any
 corpus that can be expressed as *single-speaker channels* — Fisher, CANDOR,
-LibriSpeech, NOTSOFAR-1, and duplex releases like OpenYAP-1K.
+LibriSpeech, NOTSOFAR-1, and duplex releases like OpenYAP-1K
+and otoSpeech.
 
 For a duplex corpus the chain is: word times → utterances → **Sidon** restoration
 (→ 24 kHz) → **MFA** per speaker channel → **DNSMOS** per channel → Lhotse
@@ -39,6 +40,11 @@ duplexdataprep/
       __init__.py       the adapter (duplex: one 48 kHz FLAC per speaker)
       openyap.yaml
       manifest.py       ASR word times -> utterances + manifests
+    otospeech/
+      __init__.py       the adapter (duplex: one stereo 44.1 kHz FLAC per session)
+      otospeech.yaml
+      extract.py        WebDataset tars -> per-speaker mono FLAC + session JSON
+      manifest.py       Parakeet pseudo-label word times -> utterances + manifests
 tools/                  parity_prep.sh  parity_collect.sh
                         smoke_notsofar.sh  make_notsofar_fixture.py
                         restore_dnsmos.sbatch   (GPU: restore, DNSMOS raw + restored)
@@ -128,6 +134,17 @@ duplexdataprep cuts openyap --supervisions logs/openyap/supervisions_mfa_shard*.
     --recordings out/manifests/openyap_recordings_sidon24k.jsonl.gz \
     --resample 16000 --out-dir out/manifests [--blocklist bad_channels.json]
 # -> FastMSS: prep_meeting_source.py + recipes/sim.py on <prefix>_cuts_mfa_utt.jsonl.gz
+```
+
+otoSpeech is the same chain with one step in front: its release is stereo
+WebDataset tars, so `duplexdataprep extract otospeech` first unpacks them into
+per-speaker mono FLACs (and each session's JSON, which maps speaker -> channel).
+Transcripts are the Parakeet v3 pseudo labels from Lhotse's `oto_speech` recipe.
+
+```bash
+duplexdataprep extract otospeech --shard i --n-shards N     # tars -> <sid>-ch{0,1}.flac
+duplexdataprep manifest otospeech                            # word times -> utterances
+# ... then restore / prep / align / collect / cuts exactly as above
 ```
 
 Without an install, `PYTHONPATH=<this dir> python3 -m duplexdataprep ...` works the same.

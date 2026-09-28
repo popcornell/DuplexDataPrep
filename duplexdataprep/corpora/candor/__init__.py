@@ -53,6 +53,10 @@ class Candor(ChannelSource):
         """
         return " ".join(text.split())
 
+    def extract(self, **kwargs) -> dict:
+        from .extract import extract
+        return extract(self, **kwargs)
+
     # ------------------------------------------------------------ channels
 
     def iter_channels(self, limit: int = 0):
