@@ -31,6 +31,10 @@ segment:
   min_gap: 0.30
   pad: 0.30
 
+# Pseudo-label words longer than this are broken timestamps (worst: 98.9 s for
+# one word) and are dropped before segmentation. Real words: p99 0.88 s.
+max_word_dur: 3.0
+
 # Drop utterances that overlap a redacted (muted) span.
 drop_redacted: true
 

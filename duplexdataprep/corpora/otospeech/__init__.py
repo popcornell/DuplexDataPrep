@@ -61,6 +61,7 @@ class OtoSpeech(ChannelSource):
             "min_gap": float(seg.get("min_gap", 0.30)),
             "pad": float(seg.get("pad", 0.30)),
         }
+        self.max_word_dur = float(cfg.get("max_word_dur", 3.0))
         self.keep_word_timing = bool(cfg.get("keep_word_timing", True))
         self.drop_redacted = bool(cfg.get("drop_redacted", True))
 

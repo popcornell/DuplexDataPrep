@@ -9,7 +9,10 @@ for this stereo, one-speaker-per-channel release is wrong half the time.)
 
 Utterances are rebuilt from the word times with OpenYAP's rules -- same
 `segment` knobs, same padding -- rather than taken from the ASR segments,
-so the two duplex corpora are segmented identically.
+so the two duplex corpora are segmented identically. A few pseudo-label word
+times are broken (144 of 1.26M words claim > 5 s, the worst 98.9 s for
+"mostly."); a word no pause can split would become one utterance of that
+length, so words longer than `max_word_dur` are dropped first.
 
     duplexdataprep manifest otospeech               # every extracted session
     duplexdataprep manifest otospeech --limit 5     # pilot
@@ -35,18 +38,25 @@ from ...core.manifests import write_jsonl
 from ..openyap.manifest import flac_info, utterances
 
 
-def load_labels(path: Path) -> dict[str, dict[str, list[dict]]]:
-    """seglst.json -> {session: {speaker: [{word, start, end}, ...]}}."""
+def load_labels(path: Path, max_word_dur: float) -> tuple[dict, int]:
+    """seglst.json -> ({session: {speaker: [{word, start, end}, ...]}}, n_dropped).
+
+    Words longer than `max_word_dur` are broken timestamps and are dropped.
+    """
     with open(path, encoding="utf-8") as fh:
         segs = json.load(fh)
     out: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    n_dropped = 0
     for seg in segs:
         words = seg.get("word_alignment") or [[seg["words"], seg["start_time"],
                                                seg["end_time"]]]
         dst = out[seg["session_id"]][seg["speaker"]]
         for w, s, e in words:
+            if float(e) - float(s) > max_word_dur:
+                n_dropped += 1
+                continue
             dst.append({"word": w, "start": float(s), "end": float(e)})
-    return out
+    return out, n_dropped
 
 
 def overlaps(s: float, e: float, spans: list[tuple[float, float]]) -> bool:
@@ -57,7 +67,7 @@ def build_manifests(source, split=None, out_dir=None, limit=0, report=None) -> d
     out = Path(out_dir) if out_dir else source.manifest_dir
     seg = source.segment_cfg
 
-    labels = load_labels(source.labels_path)
+    labels, n_long_words = load_labels(source.labels_path, source.max_word_dur)
     metas = sorted(source.raw_dir.glob("*.json"))
     print(f"[otospeech] {len(metas)} extracted sessions, {len(labels)} labelled",
           flush=True)
@@ -152,6 +162,7 @@ def build_manifests(source, split=None, out_dir=None, limit=0, report=None) -> d
         "skipped": skipped,
         "hours_session": round(sum(r["duration"] for r in recs) / 3600, 2),
         "asr_words": n_words,
+        "dropped_long_words": n_long_words,
         "supervisions": len(sups),
         "supervision_hours": round(sum(durs) / 3600, 2),
         "dropped_redacted": n_redacted,
