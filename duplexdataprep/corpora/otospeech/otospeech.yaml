@@ -1,0 +1,66 @@
+# otoSpeech full-duplex-processed-141h (otoearth, CC BY 4.0, gated on HF).
+# Two-party sessions, one stereo 44.1 kHz FLAC per session with one speaker per
+# channel, packaged as WebDataset tars. No transcripts ship with it: the Parakeet
+# v3 pseudo labels from Lhotse's `oto_speech` recipe supply per-word times.
+#
+#   <download root>/                  lhotse.recipes.download_oto_speech(<root>)
+#     data/train/shard-NNNNNN.tar     <sid>.flac (stereo) + <sid>.json
+#     seglst.json                     [{session_id, speaker, start_time, end_time,
+#                                       words, word_alignment: [[w, s, e], ...]}]
+#
+# <sid>.json carries speakers[].{speaker_id, channel}, redacted_segments
+# (muted spans), session_type, surveys, ...
+name: otospeech
+
+shards_dir: /path/to/otoSpeech-full-duplex-processed-141h/data/train
+labels: /path/to/otoSpeech-full-duplex-processed-141h/seglst.json
+
+manifests:
+  # Written by `duplexdataprep manifest otospeech`, then read by restore/prep/collect.
+  dir: /path/to/work/otospeech/manifests
+  recordings: otospeech_recordings.jsonl.gz
+  recordings_restored: otospeech_recordings_sidon24k.jsonl.gz
+  supervisions: otospeech_supervisions.jsonl.gz
+
+# Utterances are rebuilt from the Parakeet word times with OpenYAP's rules
+# (see openyap.yaml for why pad is 0.3), so both duplex corpora are segmented
+# the same way.
+segment:
+  pause_split: 1.0
+  max_dur: 20.0
+  min_gap: 0.30
+  pad: 0.30
+
+# Drop utterances that overlap a redacted (muted) span.
+drop_redacted: true
+
+audio:
+  # `restored` aligns and scores the Sidon output of `duplexdataprep restore`;
+  # `raw` points prep straight at the extracted per-speaker FLACs.
+  use: restored
+  raw_dir: /path/to/work/otospeech/audio
+  restored_dir: /path/to/work/otospeech/restored
+  ext: .flac
+  compression_level: 5
+
+prep:
+  n_shards: 40
+
+# Sidon speech restoration, same settings as OpenYAP.
+restore:
+  feature_extractor: /path/to/sidon_ckpt/feature_extractor_cuda.pt
+  decoder: /path/to/sidon_ckpt/decoder_cuda.pt
+  out_sr: 24000
+  chunk_seconds: 20.0
+  overlap_seconds: 2.0
+  batch_size: 8
+  dtype: fp32
+  gate: true
+  gate_pad: 0.10
+  gate_fade_ms: 20.0
+  gate_floor_db: -60.0
+
+dnsmos:
+  model_dir: /path/to/DNSMOS
+  windows: 12
+  win_sec: 10.0
